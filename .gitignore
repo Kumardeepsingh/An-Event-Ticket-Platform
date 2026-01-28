@@ -1,0 +1,68 @@
+############################
+# OS / System
+############################
+.DS_Store
+Thumbs.db
+
+############################
+# IDEs / Editors
+############################
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+############################
+# Frontend (React) - frontend/
+############################
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+############################
+# Backend (Spring Boot) - backend/
+############################
+backend/target/
+backend/.classpath
+backend/.project
+backend/.settings/
+backend/*.log
+backend/.env
+
+############################
+# Maven / Gradle
+############################
+**/target/
+**/.gradle/
+**/build/
+
+############################
+# Docker
+############################
+backend/docker-data/
+backend/.docker/
+**/*.tar
+**/*.log
+
+############################
+# Secrets & Config
+############################
+*.env
+*.key
+*.pem
+
+############################
+# Temporary files
+############################
+*.tmp
+*.swp
+*.bak
