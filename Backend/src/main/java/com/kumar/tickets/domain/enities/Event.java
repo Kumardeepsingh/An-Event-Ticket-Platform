@@ -1,4 +1,4 @@
-package com.kumar.tickets.domain;
+package com.kumar.tickets.domain.enities;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,15 +24,15 @@ public class Event {
     @Column(name = "id", updatable = false, nullable = false)
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
+    // Name
     @Column(name = "name", nullable = false)
     private String name;
 
     @Column(name = "start")
-    private LocalDateTime start;
+    private LocalDateTime startAt;
 
     @Column(name = "end")
-    private LocalDateTime end;
+    private LocalDateTime endAt;
 
     @Column(name = "venue", nullable = false)
     private String venue;
@@ -72,11 +72,11 @@ public class Event {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Event event = (Event) o;
-        return Objects.equals(id, event.id) && Objects.equals(name, event.name) && Objects.equals(start, event.start) && Objects.equals(end, event.end) && Objects.equals(venue, event.venue) && Objects.equals(salesStart, event.salesStart) && Objects.equals(saleEnd, event.saleEnd) && status == event.status && Objects.equals(createdAt, event.createdAt) && Objects.equals(updatedAt, event.updatedAt);
+        return Objects.equals(id, event.id) && Objects.equals(name, event.name) && Objects.equals(startAt, event.startAt) && Objects.equals(endAt, event.endAt) && Objects.equals(venue, event.venue) && Objects.equals(salesStart, event.salesStart) && Objects.equals(saleEnd, event.saleEnd) && status == event.status && Objects.equals(createdAt, event.createdAt) && Objects.equals(updatedAt, event.updatedAt);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, start, end, venue, salesStart, saleEnd, status, createdAt, updatedAt);
+        return Objects.hash(id, name, startAt, endAt, venue, salesStart, saleEnd, status, createdAt, updatedAt);
     }
 }
