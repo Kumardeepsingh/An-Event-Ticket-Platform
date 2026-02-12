@@ -24,7 +24,7 @@ public class Event {
     @Column(name = "id", updatable = false, nullable = false)
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-    // Name
+
     @Column(name = "name", nullable = false)
     private String name;
 
