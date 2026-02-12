@@ -17,15 +17,15 @@ public class CreateEventRequest {
 
     private String name;
 
-    private LocalDateTime startAt;
+    private LocalDateTime start;
 
-    private LocalDateTime endAt;
+    private LocalDateTime end;
 
     private String venue;
 
     private LocalDateTime salesStart;
 
-    private LocalDateTime saleEnd;
+    private LocalDateTime salesEnd;
 
     private EventStatusEnum status;
 

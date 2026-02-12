@@ -15,11 +15,11 @@ import java.util.UUID;
 public class CreateEventResponseDto {
     private UUID id;
     private String name;
-    private LocalDateTime startAt;
-    private LocalDateTime endAt;
+    private LocalDateTime start;
+    private LocalDateTime end;
     private String venue;
     private LocalDateTime salesStart;
-    private LocalDateTime saleEnd;
+    private LocalDateTime salesEnd;
     private EventStatusEnum status;
     private List<CreateTicketTypeResponseDto> ticketTypes;
     private LocalDateTime createdAt;

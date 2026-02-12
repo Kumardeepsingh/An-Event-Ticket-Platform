@@ -28,11 +28,11 @@ public class Event {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "start")
-    private LocalDateTime startAt;
+    @Column(name = "event_start")
+    private LocalDateTime start;
 
-    @Column(name = "end")
-    private LocalDateTime endAt;
+    @Column(name = "event_end")
+    private LocalDateTime end;
 
     @Column(name = "venue", nullable = false)
     private String venue;
@@ -41,7 +41,7 @@ public class Event {
     private LocalDateTime salesStart;
 
     @Column(name = "sales_end")
-    private LocalDateTime saleEnd;
+    private LocalDateTime salesEnd;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
@@ -72,11 +72,11 @@ public class Event {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Event event = (Event) o;
-        return Objects.equals(id, event.id) && Objects.equals(name, event.name) && Objects.equals(startAt, event.startAt) && Objects.equals(endAt, event.endAt) && Objects.equals(venue, event.venue) && Objects.equals(salesStart, event.salesStart) && Objects.equals(saleEnd, event.saleEnd) && status == event.status && Objects.equals(createdAt, event.createdAt) && Objects.equals(updatedAt, event.updatedAt);
+        return Objects.equals(id, event.id) && Objects.equals(name, event.name) && Objects.equals(start, event.start) && Objects.equals(end, event.end) && Objects.equals(venue, event.venue) && Objects.equals(salesStart, event.salesStart) && Objects.equals(salesEnd, event.salesEnd) && status == event.status && Objects.equals(createdAt, event.createdAt) && Objects.equals(updatedAt, event.updatedAt);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, startAt, endAt, venue, salesStart, saleEnd, status, createdAt, updatedAt);
+        return Objects.hash(id, name, start, end, venue, salesStart, salesEnd, status, createdAt, updatedAt);
     }
 }
