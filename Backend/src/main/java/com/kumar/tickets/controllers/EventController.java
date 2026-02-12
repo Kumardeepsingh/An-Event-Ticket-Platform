@@ -35,6 +35,6 @@ public class EventController {
         UUID userId = UUID.fromString(jwt.getSubject());
         Event createEvent = eventService.createEvent(userId, createEventRequest);
         CreateEventResponseDto createEventResponseDto = eventMapper.toDto(createEvent);
-        return new ResponseEntity<>(createEventResponseDto, HttpStatus.CREATED;
+        return new ResponseEntity<>(createEventResponseDto, HttpStatus.CREATED);
     }
 }
