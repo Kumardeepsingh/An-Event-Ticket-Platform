@@ -4,6 +4,7 @@ import com.kumar.tickets.domain.CreateEventRequest;
 import com.kumar.tickets.domain.UpdateEventRequest;
 import com.kumar.tickets.domain.UpdateTicketTypeRequest;
 import com.kumar.tickets.domain.enities.Event;
+import com.kumar.tickets.domain.enities.EventStatusEnum;
 import com.kumar.tickets.domain.enities.TicketType;
 import com.kumar.tickets.domain.enities.User;
 import com.kumar.tickets.exceptions.EventNotFoundException;
@@ -145,6 +146,11 @@ public class EventServiceImpl implements EventService {
     @Transactional
     public void deleteEventForOrganizer(UUID organizerId, UUID id) {
         getEventForOrganizer(organizerId, id).ifPresent(eventRepository::delete);
+    }
+
+    @Override
+    public Page<Event> listPublishedEvents(Pageable pageable) {
+        return eventRepository.findByStatus(EventStatusEnum.PUBLISHED, pageable);
     }
 
 
