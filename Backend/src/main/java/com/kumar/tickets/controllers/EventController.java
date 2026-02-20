@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+import static com.kumar.tickets.util.JwtUtil.passUserId;
+
 @RestController
 @RequestMapping(path = "/api/v1/events")
 @RequiredArgsConstructor
@@ -87,9 +89,6 @@ public class EventController {
         return ResponseEntity.noContent().build();
     }
 
-    private UUID passUserId(Jwt jwt){
-        return UUID.fromString(jwt.getSubject());
-    }
 
 
 }
