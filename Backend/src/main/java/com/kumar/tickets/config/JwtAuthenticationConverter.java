@@ -31,7 +31,7 @@ public class JwtAuthenticationConverter implements Converter<Jwt, JwtAuthenticat
         @SuppressWarnings("unchecked")
         List<String> roles = (List<String>)realmAccess.get("roles");
         return roles.stream()
-                .filter(role -> role.startsWith("Role_"))
+                .filter(role -> role.startsWith("ROLE_"))
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
     }
