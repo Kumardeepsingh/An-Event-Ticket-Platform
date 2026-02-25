@@ -19,5 +19,5 @@ public class GetTicketResponseDto {
     private String eventName;
     private String eventVenue;
     private LocalDateTime eventStart;
-    private LocalDateTime EventEnd;
+    private LocalDateTime eventEnd;
 }

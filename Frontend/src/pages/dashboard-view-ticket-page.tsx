@@ -1,6 +1,6 @@
 import { TicketDetails, TicketStatus } from "@/domain/domain";
 import { getTicket, getTicketQr } from "@/lib/api";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Calendar, DollarSign, MapPin, Tag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
@@ -88,8 +88,8 @@ const DashboardViewTicketPage: React.FC = () => {
           <div className="flex items-center gap-2 text-purple-300 mb-8">
             <Calendar className="w-4 text-purple-200" />
             <div>
-              {format(ticket.eventStart, "Pp")} -{" "}
-              {format(ticket.eventEnd, "Pp")}
+              {format(parseISO(ticket.eventStart), "Pp")} -{" "}
+              {format(parseISO(ticket.eventEnd), "Pp")}
             </div>
           </div>
 

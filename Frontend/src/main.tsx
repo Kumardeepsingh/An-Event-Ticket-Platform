@@ -111,9 +111,7 @@ const oidcConfig = {
 };
 
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <AuthProvider {...oidcConfig}>
-      <RouterProvider router={router} />
-    </AuthProvider>
-  </StrictMode>,
+  <AuthProvider {...oidcConfig}>
+    <RouterProvider router={router} />
+  </AuthProvider>,
 );

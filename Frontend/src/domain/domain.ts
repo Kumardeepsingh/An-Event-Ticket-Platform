@@ -176,8 +176,8 @@ export interface TicketDetails {
   description: string;
   eventName: string;
   eventVenue: string;
-  eventStart: Date;
-  eventEnd: Date;
+  eventStart: string;
+  eventEnd: string;
 }
 
 export enum TicketValidationMethod {
