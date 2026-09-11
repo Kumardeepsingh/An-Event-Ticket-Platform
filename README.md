@@ -1,53 +1,63 @@
 # 🎟️ Event Ticket Platform
 
-A **full‑stack Event Ticket Management Platform** built with **Spring
-Boot, React, TypeScript, PostgreSQL, and Keycloak**.\
-The platform allows users to browse events, book tickets, and manage
-their bookings through a secure authentication system.
+A **full‑stack event ticketing platform** built with **Spring Boot 4 (Java
+21), React 19 + TypeScript, PostgreSQL, and Keycloak**.
 
-This project demonstrates **modern full‑stack development**, **secure
-authentication using OAuth2 / OpenID Connect**, **containerized services
-with Docker**, and **scalable backend architecture**.
+Organizers create events and ticket types, attendees browse and purchase
+tickets, and staff check attendees in at the door by scanning a QR code or
+entering a ticket ID — all protected by role-based access control backed by
+a real OpenID Connect identity provider.
 
-It was built as a portfolio project to demonstrate skills in:
-
--   Full‑stack development
--   Secure authentication and authorization
--   REST API design
--   Containerization with Docker
--   Modern frontend development
+This isn't a CRUD tutorial clone — it's built around a few genuinely tricky
+problems: preventing tickets from being oversold under concurrent purchases,
+generating tamper-resistant QR codes that can't be reused after check-in,
+and delegating authentication to an external identity provider instead of
+rolling a custom login system.
 
 ------------------------------------------------------------------------
 
 # 🚀 Key Features
 
-## 👤 User Features
+## 👤 Attendee Features
 
--   Browse available events
--   View event details
--   Purchase or reserve tickets
--   QR-based ticket verification
--   Secure login and authentication via Keycloak
+-   Browse and full-text search published events (Postgres `tsvector` search
+    over event name/venue)
+-   View event details and available ticket types
+-   Purchase tickets with real-time inventory checks (no overselling)
+-   View purchased tickets and download the associated QR code
 
-## 🎫 Event Management
+## 🎫 Organizer Features
 
--   Create and manage events
--   Manage ticket inventory
--   View bookings and ticket allocations
+-   Create, update, and delete events with nested ticket types in a single
+    request
+-   Manage ticket type pricing and inventory (`totalAvailable`)
+-   Scoped strictly to events the organizer owns
 
-## 🔐 Secure Authentication
+## 🛂 Staff / Check-in Features
 
--   OAuth2 / OpenID Connect authentication
--   Identity and Access Management with **Keycloak**
--   JWT token-based authentication
--   Protected backend APIs using **Spring Security**
+-   Validate tickets at the door via **QR scan** or **manual ticket ID**
+    entry
+-   Ticket validation is single-use — a ticket that's already been validated
+    is rejected on re-scan
 
-## 📱 Modern UI
+## 🔐 Secure, Delegated Authentication
 
--   Responsive interface
--   Built with **React + TypeScript**
--   Styled using **TailwindCSS**
--   Accessible UI components using **Radix UI**
+-   Authentication and identity management fully delegated to **Keycloak**
+    (OAuth2 / OpenID Connect) — the Spring app never issues or stores
+    passwords
+-   Spring Security acts as an **OAuth2 Resource Server**, validating JWTs
+    issued by Keycloak
+-   Role-based authorization (`ORGANIZER`, `STAFF`, `ATTENDEE`) driven by
+    Keycloak realm roles
+-   New users are provisioned just-in-time in the local database from JWT
+    claims on first authenticated request
+
+## 📱 Modern Frontend
+
+-   React 19 + TypeScript SPA built with Vite
+-   Styled with Tailwind CSS 4 and accessible Radix UI primitives
+-   Camera-based QR scanning in the browser for staff check-in
+-   OIDC login flow via `react-oidc-context`
 
 ------------------------------------------------------------------------
 
@@ -55,77 +65,141 @@ It was built as a portfolio project to demonstrate skills in:
 
     Frontend (React + Vite + TypeScript)
             │
-            │ REST API (HTTPS)
+            │ REST API (JWT bearer token)
             ▼
-    Backend (Spring Boot)
+    Backend (Spring Boot — OAuth2 Resource Server)
             │
-            │ JPA / Hibernate
+            ├── UserProvisioningFilter (JIT-creates local User from JWT claims)
+            │
+            ├── Controllers → Services → Repositories (Spring Data JPA)
+            │
             ▼
     PostgreSQL Database
 
     Authentication:
-    React → Keycloak → JWT → Spring Security
+    User → React (react-oidc-context) → Keycloak login → JWT issued
+         → JWT sent as Bearer token → Spring Security validates against Keycloak issuer
+
+Note: the Spring Boot backend never issues tokens itself — it only
+**validates** JWTs that Keycloak already issued.
 
 ------------------------------------------------------------------------
 
 # 🛠️ Tech Stack
 
-## Frontend
-
--   React 19
--   TypeScript
--   Vite
--   Tailwind CSS
--   React Router
--   Radix UI
--   JWT Decode
--   QR Scanner
-
 ## Backend
 
 -   Java 21
--   Spring Boot
--   Spring Security
--   OAuth2 Resource Server
--   Spring Data JPA
--   MapStruct
+-   Spring Boot 4.0.2 (modular starters: `webmvc`, `security`,
+    `security-oauth2-resource-server`, `data-jpa`, `validation`,
+    `h2console`)
+-   Spring Security — OAuth2 Resource Server
+-   Spring Data JPA / Hibernate (with JPA auditing for `createdAt`/`updatedAt`)
+-   MapStruct — DTO ↔ entity mapping
 -   Lombok
--   Maven
+-   Google ZXing — QR code generation
+-   Maven (with wrapper)
+
+## Frontend
+
+-   React 19 + TypeScript (~5.7)
+-   Vite 6
+-   Tailwind CSS 4
+-   Radix UI (dialog, dropdown, select, popover, switch, avatar, etc.)
+-   React Router 7
+-   react-oidc-context + oidc-client-ts (Keycloak OIDC login)
+-   jwt-decode
+-   @yudiel/react-qr-scanner (camera-based QR scanning)
+-   json-server (local mock API for frontend-only development)
 
 ## Database
 
--   PostgreSQL
+-   PostgreSQL (runtime)
+-   H2 (in-memory, test scope only)
 
 ## Authentication & Identity
 
 -   Keycloak
--   OpenID Connect
--   OAuth2
+-   OpenID Connect / OAuth2
 
 ## DevOps & Infrastructure
 
--   Docker
--   Docker Compose
--   Adminer (Database UI)
--   JSON Server (Mock APIs)
+-   Docker Compose (Postgres, Keycloak, Adminer — infrastructure services;
+    the Spring Boot app and frontend run natively, not containerized, in
+    the current setup)
+
+------------------------------------------------------------------------
+
+# 📡 API Overview
+
+All endpoints are versioned under `/api/v1`.
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| POST | `/events` | Create an event with nested ticket types | `ROLE_ORGANIZER` |
+| GET | `/events` | Paginated list of the organizer's own events | `ROLE_ORGANIZER` |
+| GET | `/events/{eventId}` | Get an event owned by the caller | authenticated + ownership |
+| PUT | `/events/{eventId}` | Update an event and diff/merge its ticket types | authenticated + ownership |
+| DELETE | `/events/{eventId}` | Delete an event | authenticated + ownership |
+| GET | `/published-events` | Public, paginated list of published events (`?q=` triggers full-text search) | public |
+| GET | `/published-events/{eventId}` | Public detail of a published event | public |
+| POST | `/events/{eventId}/ticket-types/{ticketTypeId}/tickets` | Purchase a ticket (pessimistic-locked inventory check) | authenticated |
+| GET | `/tickets` | Paginated list of the caller's purchased tickets | authenticated |
+| GET | `/tickets/{ticketId}` | Get a ticket owned by the caller | authenticated |
+| GET | `/tickets/{ticketId}/qr-codes` | Returns the ticket's QR code as a PNG image | authenticated |
+| POST | `/ticket-validations` | Validate a ticket by QR scan or manual ticket ID | `ROLE_STAFF` |
+
+------------------------------------------------------------------------
+
+# ⚙️ Notable Engineering Details
+
+-   **Oversell protection under concurrency** — ticket purchases take a
+    `PESSIMISTIC_WRITE` database lock on the `TicketType` row before
+    counting existing tickets against `totalAvailable`, so two simultaneous
+    purchase requests for the last ticket can't both succeed.
+-   **Single-use QR validation** — each `QrCode` encodes a random UUID (not
+    the ticket ID itself) into a PNG via ZXing. At check-in, a ticket that
+    already has a valid validation record is rejected instead of silently
+    re-validated, preventing re-entry with a photographed QR code.
+-   **Full-text event search** — the public events endpoint uses native
+    PostgreSQL `to_tsvector`/`plainto_tsquery` search over event name and
+    venue rather than a naive `LIKE` query.
+-   **JIT user provisioning** — a custom `OncePerRequestFilter` creates the
+    local `User` row from JWT claims the first time a Keycloak-authenticated
+    user hits the API, so there's no separate "register" endpoint or
+    signup flow to keep in sync with Keycloak.
+-   **Clean layering** — Controller → Service → Repository, with MapStruct
+    generating DTO↔entity mappers so persistence entities are never
+    serialized directly over the wire.
+-   **Centralized error handling** — a `@RestControllerAdvice` maps every
+    domain exception (not-found, sold-out, QR generation failure, etc.) and
+    validation errors to consistent JSON error responses with appropriate
+    HTTP status codes.
 
 ------------------------------------------------------------------------
 
 # 📂 Project Structure
 
-    Event-Ticket-Platform
+    An-Event-Ticket-Platform
     │
     ├── Backend
-    │   ├── src/main/java
-    │   │   ├── controllers
-    │   │   ├── services
-    │   │   ├── repositories
-    │   │   ├── models
-    │   │   └── security
+    │   ├── src/main/java/com/kumar/tickets
+    │   │   ├── controllers        # EventController, TicketController, TicketValidationController, ...
+    │   │   ├── services           # service interfaces
+    │   │   ├── services/impl      # service implementations
+    │   │   ├── repositories       # Spring Data JPA repositories
+    │   │   ├── domain/enities     # JPA entities (Event, Ticket, TicketType, User, QrCode, TicketValidation) + enums
+    │   │   ├── domain/dtos        # request/response DTOs
+    │   │   ├── mappers            # MapStruct mappers
+    │   │   ├── config             # SecurityConfig, JwtAuthenticationConverter, JpaConfiguration, QrCodeConfig
+    │   │   ├── filters            # UserProvisioningFilter (JIT user creation)
+    │   │   ├── util                # JwtUtil
+    │   │   └── exceptions         # domain exception hierarchy
     │   │
     │   ├── src/main/resources
-    │   │   └── application.yml
+    │   │   └── application.properties
     │   │
+    │   ├── docker-compose.yml     # Postgres, Keycloak, Adminer
     │   └── pom.xml
     │
     ├── Frontend
@@ -134,83 +208,64 @@ It was built as a portfolio project to demonstrate skills in:
     │   │   ├── pages
     │   │   ├── services
     │   │   └── routes
-    │   │
     │   ├── public
     │   ├── package.json
     │   └── vite.config.ts
     │
-    ├── docker-compose.yml
-    │
+    ├── LICENSE
     └── README.md
 
 ------------------------------------------------------------------------
 
-# 🐳 Running Services with Docker
+# 🐳 Running Infrastructure with Docker
 
-The project uses **Docker Compose** to start required infrastructure
-services:
+`Backend/docker-compose.yml` starts the infrastructure the app depends on.
+It does **not** containerize the Spring Boot app or the frontend — both run
+natively against these services in local development.
 
--   PostgreSQL database
--   Keycloak identity server
--   Adminer database UI
+    cd Backend
+    docker compose up -d
 
-## Start Docker Services
+| Service | Purpose | Port |
+|---|---|---|
+| PostgreSQL | Application database | 5432 |
+| Keycloak | Identity provider (OAuth2 / OIDC) | 9090 (admin: `admin`/`admin`) |
+| Adminer | Database management UI | 8888 |
 
-``` bash
-docker compose up -d
-```
-
-This will start:
-
-  Service      Purpose
-  ------------ ---------------------------
-  PostgreSQL   Main application database
-  Keycloak     Authentication server
-  Adminer      Database management UI
+> The bundled `application.properties` points at local Postgres/Keycloak
+> with development-only credentials — fine for running the project locally,
+> not meant for production use.
 
 ------------------------------------------------------------------------
 
 # 🔑 Keycloak Authentication
 
-The platform uses **Keycloak for authentication and authorization**.
+Keycloak is the system of record for identity. It issues JWTs on login and
+Spring Security validates them on every request — the Spring app itself has
+no login endpoint or password storage.
 
-Keycloak provides:
+    User → React Frontend → Keycloak Login Page → JWT Issued
+         → Bearer token sent to Spring Boot API → Token validated against
+           Keycloak's issuer + JWKS
 
--   User management
--   Role-based access control
--   Secure OAuth2 authentication
--   JWT token generation
-
-### Authentication Flow
-
-    User Login
-       │
-       ▼
-    React Frontend
-       │
-       ▼
-    Keycloak Login Page
-       │
-       ▼
-    JWT Token Issued
-       │
-       ▼
-    Spring Boot Backend (Token Validation)
+Realm roles prefixed `ROLE_` (e.g. `ROLE_ORGANIZER`, `ROLE_STAFF`) are read
+from the JWT's `realm_access.roles` claim and mapped to Spring Security
+authorities by a custom `JwtAuthenticationConverter`.
 
 ------------------------------------------------------------------------
 
 # 🗄️ Database
 
-The application uses **PostgreSQL** as the primary database.
+PostgreSQL is the primary datastore, accessed via Spring Data JPA.
 
-Entities include:
-
--   Users
--   Events
--   Tickets
--   Bookings
-
-The backend uses **Spring Data JPA** for ORM and database access.
+| Entity | Description |
+|---|---|
+| `User` | A Keycloak-identified user (organizer, staff, and/or attendee) |
+| `Event` | An event owned by an organizer, with a status (`DRAFT`/`PUBLISHED`/`CANCELLED`/`COMPLETED`) |
+| `TicketType` | A priced ticket tier belonging to an event, with limited inventory |
+| `Ticket` | A purchased ticket for a specific `TicketType` |
+| `QrCode` | A generated QR code (PNG, Base64) tied to a ticket, used for check-in |
+| `TicketValidation` | A record of a check-in attempt (QR scan or manual), with a status |
 
 ------------------------------------------------------------------------
 
@@ -218,8 +273,17 @@ The backend uses **Spring Data JPA** for ORM and database access.
 
 ## 1️⃣ Clone the Repository
 
-    git clone https://github.com/YOUR_USERNAME/event-ticket-platform.git
-    cd event-ticket-platform
+    git clone https://github.com/Kumardeepsingh/An-Event-Ticket-Platform.git
+    cd An-Event-Ticket-Platform
+
+## 2️⃣ Start Infrastructure
+
+    cd Backend
+    docker compose up -d
+
+You'll also need to configure a Keycloak realm (`event-ticket-platform`)
+with an `event-ticket-platform-app` client and `ORGANIZER`/`STAFF` realm
+roles, matching `application.properties`.
 
 ------------------------------------------------------------------------
 
@@ -228,7 +292,7 @@ The backend uses **Spring Data JPA** for ORM and database access.
 ### Requirements
 
 -   Java 21
--   Maven
+-   Maven (or use the bundled `./mvnw`)
 
 ### Start backend
 
@@ -264,29 +328,33 @@ Frontend will run at:
 
 # 📈 Skills Demonstrated
 
-This project demonstrates strong knowledge of:
-
--   Full‑stack application development
--   Secure authentication using OAuth2 and OpenID Connect
--   RESTful API design
--   Spring Boot backend architecture
--   React frontend development
--   Database integration with PostgreSQL
--   Containerized development using Docker
--   Identity and access management with Keycloak
+-   Full‑stack application development (Spring Boot + React/TypeScript)
+-   Delegated authentication and RBAC using OAuth2 / OpenID Connect and
+    Keycloak
+-   RESTful API design with pagination, validation, and centralized error
+    handling
+-   Concurrency-safe data access (pessimistic locking) for a real-world
+    race condition
+-   Clean layered backend architecture (Controller/Service/Repository +
+    DTO/mapper separation via MapStruct)
+-   Database design with Spring Data JPA, JPA auditing, and native
+    PostgreSQL full-text search
+-   Containerized local development with Docker Compose
 
 ------------------------------------------------------------------------
 
 # 💡 Future Improvements
 
-Possible improvements for future development:
-
--   Online payment integration
--   Email notifications for bookings
--   Admin dashboard for event organizers
--   Real-time ticket availability
--   Cloud deployment (AWS / Kubernetes)
+-   Expand automated test coverage (controller, service, and repository
+    layers currently have no tests beyond a context-load smoke test)
 -   CI/CD pipeline
+-   Containerize the Spring Boot app and frontend themselves, not just
+    infrastructure
+-   Online payment integration
+-   Email notifications for ticket purchases
+-   Admin dashboard for event organizers
+-   Real-time ticket availability updates
+-   Cloud deployment (AWS / Kubernetes)
 
 ------------------------------------------------------------------------
 
@@ -302,14 +370,10 @@ Interested in:
 -   Full‑Stack Development
 -   Cloud Technologies
 
-GitHub:
-
-https://github.com/YOUR_USERNAME
+GitHub: https://github.com/Kumardeepsingh
 
 ------------------------------------------------------------------------
 
 # 📄 License
 
-This project is licensed under the **MIT License**.
-
-You are free to use and modify the project for learning purposes.
+This project is licensed under the [MIT License](./LICENSE).
