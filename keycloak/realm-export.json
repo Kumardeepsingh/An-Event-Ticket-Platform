@@ -1,0 +1,107 @@
+{
+  "realm": "event-ticket-platform",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "ROLE_ORGANIZER",
+        "description": "Can create and manage events and ticket types"
+      },
+      {
+        "name": "ROLE_STAFF",
+        "description": "Can validate tickets at check-in"
+      },
+      {
+        "name": "ROLE_ATTENDEE",
+        "description": "Default role for every signed-in user"
+      }
+    ]
+  },
+  "defaultRole": {
+    "name": "default-roles-event-ticket-platform",
+    "description": "Default roles automatically granted to every new user",
+    "composite": true,
+    "composites": {
+      "realm": ["ROLE_ATTENDEE"]
+    },
+    "clientRole": false
+  },
+  "clients": [
+    {
+      "clientId": "event-ticket-platform-app",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:8081/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:8081"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "organizer",
+      "enabled": true,
+      "email": "organizer@example.com",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Organizer",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeme123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_ORGANIZER", "ROLE_ATTENDEE"]
+    },
+    {
+      "username": "staff",
+      "enabled": true,
+      "email": "staff@example.com",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Staff",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeme123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_STAFF", "ROLE_ATTENDEE"]
+    },
+    {
+      "username": "attendee",
+      "enabled": true,
+      "email": "attendee@example.com",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Attendee",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeme123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_ATTENDEE"]
+    }
+  ]
+}

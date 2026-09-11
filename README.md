@@ -124,9 +124,15 @@ Note: the Spring Boot backend never issues tokens itself — it only
 
 ## DevOps & Infrastructure
 
--   Docker Compose (Postgres, Keycloak, Adminer — infrastructure services;
-    the Spring Boot app and frontend run natively, not containerized, in
-    the current setup)
+-   Docker — the backend and frontend each have their own multi-stage
+    `Dockerfile` (Maven/JRE for the backend, Node/Nginx for the frontend)
+-   Docker Compose — `docker-compose.prod.yml` runs the full stack (Postgres,
+    Keycloak, backend, frontend) as containers; `Backend/docker-compose.yml`
+    remains for running just the infrastructure alongside natively-run
+    backend/frontend during day-to-day development
+-   Keycloak realm-as-code — `keycloak/realm-export.json` is auto-imported on
+    startup, so the realm, roles, OIDC client, and demo users are
+    reproducible from git instead of manual admin-console clicking
 
 ------------------------------------------------------------------------
 
@@ -199,7 +205,8 @@ All endpoints are versioned under `/api/v1`.
     │   ├── src/main/resources
     │   │   └── application.properties
     │   │
-    │   ├── docker-compose.yml     # Postgres, Keycloak, Adminer
+    │   ├── docker-compose.yml     # Postgres, Keycloak, Adminer (infra-only, for native dev)
+    │   ├── Dockerfile             # multi-stage: Maven build -> JRE runtime
     │   └── pom.xml
     │
     ├── Frontend
@@ -209,19 +216,29 @@ All endpoints are versioned under `/api/v1`.
     │   │   ├── services
     │   │   └── routes
     │   ├── public
+    │   ├── Dockerfile             # multi-stage: Node build -> Nginx runtime
+    │   ├── nginx.conf             # SPA fallback + /api proxy to the backend container
     │   ├── package.json
     │   └── vite.config.ts
     │
+    ├── keycloak
+    │   └── realm-export.json      # realm/roles/client/demo users, auto-imported on startup
+    │
+    ├── docker-compose.prod.yml    # full stack: db, keycloak, backend, frontend
+    ├── .env.example               # template for docker-compose.prod.yml secrets/config
     ├── LICENSE
     └── README.md
 
 ------------------------------------------------------------------------
 
-# 🐳 Running Infrastructure with Docker
+# 🐳 Running with Docker
 
-`Backend/docker-compose.yml` starts the infrastructure the app depends on.
-It does **not** containerize the Spring Boot app or the frontend — both run
-natively against these services in local development.
+There are two ways to run this project with Docker, depending on what you're doing.
+
+## Option A: Infrastructure only (for native backend/frontend development)
+
+`Backend/docker-compose.yml` starts just the infrastructure the app depends
+on. The Spring Boot app and frontend run natively against these services.
 
     cd Backend
     docker compose up -d
@@ -235,6 +252,27 @@ natively against these services in local development.
 > The bundled `application.properties` points at local Postgres/Keycloak
 > with development-only credentials — fine for running the project locally,
 > not meant for production use.
+
+## Option B: The full stack, containerized
+
+`docker-compose.prod.yml` builds and runs the backend and frontend as
+containers too, alongside Postgres and Keycloak — no local Java/Node/Maven
+toolchain required.
+
+    cp .env.example .env
+    docker compose -f docker-compose.prod.yml up -d --build
+
+| Service | Purpose | Port |
+|---|---|---|
+| frontend | React SPA served by Nginx, proxies `/api/*` to the backend container | 8081 |
+| backend | Spring Boot API | 8080 |
+| keycloak | Identity provider — auto-imports `keycloak/realm-export.json` on first boot | 9090 |
+| db / keycloak-db | Postgres for the app / for Keycloak's own state | (internal only) |
+
+The realm import creates three demo accounts (password `changeme123` for
+all): `organizer`, `staff`, and `attendee` — log in as any of them at
+`http://localhost:8081` to exercise the corresponding role's flows without
+touching the Keycloak admin console.
 
 ------------------------------------------------------------------------
 
@@ -251,6 +289,12 @@ no login endpoint or password storage.
 Realm roles prefixed `ROLE_` (e.g. `ROLE_ORGANIZER`, `ROLE_STAFF`) are read
 from the JWT's `realm_access.roles` claim and mapped to Spring Security
 authorities by a custom `JwtAuthenticationConverter`.
+
+The realm itself (`event-ticket-platform`) is defined as code in
+`keycloak/realm-export.json` — roles, the `event-ticket-platform-app` OIDC
+client, and demo users are all auto-imported the first time Keycloak starts
+against an empty database when running the full stack via
+`docker-compose.prod.yml` (see "Running with Docker" above).
 
 ------------------------------------------------------------------------
 
@@ -276,14 +320,25 @@ PostgreSQL is the primary datastore, accessed via Spring Data JPA.
     git clone https://github.com/Kumardeepsingh/An-Event-Ticket-Platform.git
     cd An-Event-Ticket-Platform
 
-## 2️⃣ Start Infrastructure
+## 2️⃣ Start Everything
+
+The fastest path is the fully containerized stack (see "Running with
+Docker" above), which also auto-configures the Keycloak realm for you:
+
+    cp .env.example .env
+    docker compose -f docker-compose.prod.yml up -d --build
+
+If you'd rather run the backend/frontend natively for faster edit-reload
+cycles, start just the infrastructure instead and skip ahead to "Run
+Backend" / "Run Frontend" below:
 
     cd Backend
     docker compose up -d
 
-You'll also need to configure a Keycloak realm (`event-ticket-platform`)
-with an `event-ticket-platform-app` client and `ORGANIZER`/`STAFF` realm
-roles, matching `application.properties`.
+With this path, you'll need to manually configure a Keycloak realm
+(`event-ticket-platform`) with an `event-ticket-platform-app` client and
+`ROLE_ORGANIZER`/`ROLE_STAFF` realm roles, matching `application.properties`
+— or import `keycloak/realm-export.json` yourself via the admin console.
 
 ------------------------------------------------------------------------
 
@@ -339,7 +394,12 @@ Frontend will run at:
     DTO/mapper separation via MapStruct)
 -   Database design with Spring Data JPA, JPA auditing, and native
     PostgreSQL full-text search
--   Containerized local development with Docker Compose
+-   Containerizing a multi-service application (backend, frontend, identity
+    provider, two databases) with multi-stage Docker builds and Docker
+    Compose
+-   Identity/access management as code — a Keycloak realm (roles, OIDC
+    client, users) defined in a version-controlled export and auto-imported
+    on startup
 
 ------------------------------------------------------------------------
 
@@ -348,13 +408,11 @@ Frontend will run at:
 -   Expand automated test coverage (controller, service, and repository
     layers currently have no tests beyond a context-load smoke test)
 -   CI/CD pipeline
--   Containerize the Spring Boot app and frontend themselves, not just
-    infrastructure
+-   Public deployment (a free-tier cloud VM behind HTTPS)
 -   Online payment integration
 -   Email notifications for ticket purchases
 -   Admin dashboard for event organizers
 -   Real-time ticket availability updates
--   Cloud deployment (AWS / Kubernetes)
 
 ------------------------------------------------------------------------
 

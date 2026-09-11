@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tickets
+      POSTGRES_USER: tickets
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql
+
+  keycloak-db:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    restart: unless-stopped
+    depends_on:
+      - keycloak-db
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    command:
+      - start-dev
+      - --import-realm
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    ports:
+      - "9090:8080"
+
+  backend:
+    build: ./Backend
+    restart: unless-stopped
+    depends_on:
+      - db
+      - keycloak
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/tickets
+      SPRING_DATASOURCE_USERNAME: tickets
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Must equal whatever host/port the browser uses to reach Keycloak (the `iss` claim
+      # Keycloak stamps on tokens reflects the request it received) — NOT the internal
+      # Docker service address, which is only used below for fetching signing keys.
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${OIDC_AUTHORITY}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/event-ticket-platform/protocol/openid-connect/certs
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./Frontend
+      args:
+        VITE_OIDC_AUTHORITY: ${OIDC_AUTHORITY}
+        VITE_OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+        VITE_OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8081:80"
+
+volumes:
+  db-data:
+  keycloak-db-data:
